@@ -1,0 +1,234 @@
+#!/usr/bin/perl
+=head1 NAME
+
+ Hello  world
+
+=cut
+
+use strict;
+use warnings;
+require Abills::Misc;
+use A_module; # connect to sql-function Abill/mysql/A_module.pm
+use Conf;
+use Data::Dumper;
+
+# Включение нужных путей
+# BEGIN {
+#   our $libpath = '../';
+#   my $sql_type = 'mysql';
+#   unshift(@INC,
+#     $libpath . "Abills/$sql_type/",
+#     $libpath . "Abills/modules/",
+#     $libpath . '/lib/',
+#     $libpath . '/Abills/',
+#     $libpath
+#   );
+# }
+
+# Модуль конфигурации
+
+our (
+  $db,
+  $admin,
+  %conf,
+  # $libpath,
+  %lang,
+  %FORM,
+  $index,
+);
+
+
+# конфигурационный файл
+do "../libexec/config.pl";
+
+# HTML визуализация
+# use Abills::HTML;
+our Abills::HTML $html;
+
+# HTML визуализация. Table
+my Abills::HTML $table;
+
+
+# Включение базовых словарей
+if ($html->{language} ne 'english') {
+  do $libpath . "/language/english.pl";
+}
+
+if (-f $libpath . "/language/$html->{language}.pl") {
+  do $libpath . "/language/$html->{language}.pl";
+}
+
+# Подключение модуля работы с шаблонами
+require Abills::Templates;
+
+my $A_module = A_module->new($db, $admin, \%conf);
+
+#*******************************************************************
+=head2 first_function
+
+=cut
+#*******************************************************************
+sub first_function {
+  my ($attr) = @_;
+  print $html->message('info', $lang{INFO}, "Hello world from FIRST function");
+
+  print $html->form_main({
+    CONTENT => $html->form_input({ 'name', 'value' }),
+    NAME    => 'form_input',
+    HIDDEN  => {
+      'index' => $index,
+      ($attr->{HIDDEN}) ? %{$attr->{HIDDEN}} : undef
+    }
+  }
+  );
+
+  print $html->tpl_show(_include('form_tp', 'A_module'), {
+    INDEX => $index,
+  }, { OUTPUT2RETURN => 1 });
+
+}
+
+
+#*******************************************************************
+=head2 second_function
+show form
+put data into MySQL
+Show table with all users
+=cut
+#*******************************************************************
+
+sub second_function {
+
+  if ($FORM{add}) {
+    $A_module->customer_add(\%FORM);
+    $html->message('success', $lang{COMPETITOR_ADDED}) if (!_error_show($A_module));
+  }
+  elsif ($FORM{chg}) {
+    $A_module->{ACTION} = 'change';
+    $A_module->{LNG_ACTION} = $lang{CHANGE};
+
+    $A_module->customer_chg({ ID => $FORM{chg} });
+       # print Dumper \%FORM;
+    print $html->tpl_show(_include('form_change_tp', 'A_module'), {
+      INDEX => $index,
+      ID => $FORM{chg},
+    }, { OUTPUT2RETURN => 1 });
+
+  }
+  elsif ($FORM{change}) {
+    $A_module->customer_change(\%FORM);
+    $html->message('success', $lang{COMPETITOR_CHANGED}) if (!_error_show($A_module));
+
+  }
+  elsif ($FORM{del}) {
+    $A_module->customer_del({ ID => $FORM{del} });
+    $html->message('success', $lang{COMPETITOR_DELETED})  if (!_error_show($A_module));
+  }
+
+  # SHOW ADD_FORM
+  if ($FORM{add_form}) {
+    print $html->message('info', $lang{INFO}, "Please fill the fields");
+    print $html->tpl_show(_include('form_tp', 'A_module'), {
+      INDEX => $index,
+    }, { OUTPUT2RETURN => 1 });
+      # print Dumper \%FORM;
+      # print $FORM{'NAME'} . "\n";
+  }
+
+  # SELECT FROM DATABASE
+    # my $customer_list = $A_module->customer_list({ ID => '_SHOW', NAME => '_SHOW', ADDRESS => '_SHOW', COLS_NAME => 1, COLS_UPPER => 1});
+  my $customer_list = $A_module->customer_list();
+    # print Dumper $customer_list;
+
+
+  # CREATE TABLE
+  $table = $html->table({
+    width   => '100%',
+    caption => "List of customers",
+    title   => [ "ID", "Name", "Address" ],
+    # cols_align => ['center', 'right', 'left'],
+    # qs => ['center', 'right', 'left'],
+    pages   => 20,
+    ID      => 'LIST_ID',
+    HAS_FUNCTION_FIELDS => 1,
+    MENU    => "$lang{ADD}:index=$index&add_form=1:add",
+  });
+
+  # my $second_function_index = get_function_index('second_function');
+
+  # ADD ROWS TO TABLE
+  foreach my $line (@$customer_list) {
+    # print Dumper "$line\n";
+    $table->addrow(
+      $line->{ID},
+      $line->{NAME},
+      $line->{ADDRESS_STREET},
+      $html->button('Edit', "index=$index&chg=$line->{ID}",{ class => 'change' }),
+      $html->button('Delete', "index=$index&del=$line->{ID}", { MESSAGE => "$lang{DEL} $_->{NAME}? $_->{ADDRESS_STREET}?", class => 'del' }),
+    );
+  }
+
+
+  # PRINT TABLE
+  print $table->show();
+
+  return 1;
+}
+
+
+#*******************************************************************
+=head2 DATABASE
+
+=cut
+#*******************************************************************
+# sub database {
+#
+# my $self = shift;
+#
+#     my $user_name = $FORM{'user_name'};
+#     my $user_address = $FORM{'user_address'};
+#
+# #   # Подключение базы
+#   use Abills::SQL;
+#   # my $db = Abills::SQL->connect($conf{dbtype}, $conf{dbhost}, $conf{dbname}, $conf{dbuser}, $conf{dbpasswd}, {
+#   #     CHARSET => ($conf{dbcharset}) ? $conf{dbcharset} : undef
+#   # });
+#
+#   # Save data to DATABASE
+#   query_add('customers', {name => $user_name,
+#                          address => $user_address}
+#   );
+#
+#
+# #
+# #     # Show data from DATABASE
+# #
+#
+# #     print "<h2 class = \"text-center text-success text-wrap\"> Список користувачів </h2>";
+# #
+#     # while ($ref = $sth->fetchrow_arrayref) {
+#     #     #print "<br> $$ref[1], $$ref[2];\n"; # печатаем результат
+#     #     <div class="container">
+#     #     <div class="row">
+#     #
+#     #     <div class="card col-md-3">
+#     #     <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" fill="currentColor" class="bi bi-person-square" viewBox="0 0 16 16">
+#     #     <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+#     #     <path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2zm12 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1v-1c0-1-1-4-6-4s-6 3-6 4v1a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12z"/>
+#     #     </svg>
+#     #
+#     #     print "<h5 class="fs-6 lh-1"><a href="http://www.google.com">$$ref[1]</a></h5>"
+#     #     <button type="button" class="btn btn-light p-0 text-wrap">Кабінет</button>
+#     #     <p class="fs-6 lh-1">$$ref[2]</p>
+#     #     </div>
+#     #     </div>
+#     # }
+#
+#
+#     # $rc = $sth->finish;  # закрываем
+#     # $rc = $dbh->disconnect; # соединение
+#
+# }
+
+1;
+
