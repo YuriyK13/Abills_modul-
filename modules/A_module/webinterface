@@ -19,7 +19,6 @@ our (
   $db,
   $admin,
   %conf,
-  # $libpath,
   %lang,
   %FORM,
   $index,
