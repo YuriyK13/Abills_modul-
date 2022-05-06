@@ -1,9 +1,0 @@
-#Iner_ID : my functions 1 - Clients
-%FUNCTIONS_LIST = (
-                   "01:0:Main menu:null:"                              => 1,
-                   "02:1:First function:first_function:"                 => 1,
-                   "03:1:Second function:second_function:"                 => 1,
-                   #"04:02:1 Second function:second_function:"           => 1,
-                   );
-
-1
