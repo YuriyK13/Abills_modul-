@@ -1,0 +1,138 @@
+#!/usr/bin/perl
+=head1 NAME
+
+ Hello  world
+
+=cut
+
+use strict;
+use warnings;
+require Abills::Misc;
+use A_module;
+use Conf;
+use Data::Dumper;
+
+
+# Модуль конфигурации
+
+our (
+  $db,
+  $admin,
+  %conf,
+  %lang,
+  %FORM,
+  $index,
+);
+
+
+our Abills::HTML $html;
+my Abills::HTML $table;
+
+my $A_module = A_module->new($db, $admin, \%conf);
+
+#*******************************************************************
+=head2 first_function() - show info
+
+=cut
+#*******************************************************************
+sub first_function {
+  print $html->message('info', $lang{INFO}, "Hello world from FIRST function");
+}
+
+#*******************************************************************
+=head2 second_function ($attr) - show list of customers with options 'add', 'edit' and 'delete'
+
+=cut
+#*******************************************************************
+sub second_function {
+
+  if ($FORM{add}) {
+    $A_module->customer_add(\%FORM);
+    $html->message('success', $lang{ADDED} ) if (!_error_show($A_module));
+  }
+  elsif ($FORM{chg}) {
+    $A_module->{ACTION} = 'change';
+    $A_module->{LNG_ACTION} = $lang{CHANGE};
+    $html->message('secondary', $lang{USER_INFO}) if (!_error_show($A_module));
+    $A_module->customer_info({ ID => $FORM{chg} });
+    $FORM{add_form}=1
+  }
+  elsif ($FORM{change}) {
+    $A_module->customer_change(\%FORM);
+    $html->message('success', $lang{CHANGED}) if (!_error_show($A_module));
+  }
+  elsif ($FORM{del}) {
+    $A_module->customer_del({ ID => $FORM{del} });
+    $html->message('success', $lang{DELETED})  if (!_error_show($A_module));
+  }
+
+  if ($FORM{add_form}) {
+    print $html->tpl_show(_include('a_module_form_tp', 'A_module'), {
+      INDEX => $index,
+      ACTION => 'add',
+      LNG_ACTION => $lang{ADD},
+      %$A_module
+    }, { OUTPUT2RETURN => 1 });
+  }
+  elsif ($FORM{search_form}) {
+    $html->message('success', $lang{SEARCH_ABON}) if (!_error_show($A_module));
+    form_search({
+      TPL => $html->tpl_show(_include('a_module_customer_search', 'A_module'), {
+        INDEX => $index,
+      }, { OUTPUT2RETURN => 1 })
+    });
+  }
+
+  if($FORM{search}){
+    %LIST_PARAMS = %FORM;
+  }
+
+  my $customer_list = $A_module->customer_list({
+    ALL => 1,
+    COLS_NAME => 1,
+    SORT => $FORM{sort},
+    DESC => $FORM{desc},
+    %LIST_PARAMS
+  });
+
+
+  $table = $html->table({
+    width   => '100%',
+    caption => $lang{CONTACTS},
+    border => 1,
+    title   => [ "#", $lang{FIO}, $lang{ADDRESS_STREET}, ],
+    cols_align => ['center', 'right', 'left'],
+    pages   => $admin->{TOTAL},
+    ID      => 'LIST_ID',
+    HAS_FUNCTION_FIELDS => 1,
+    EXPORT  => 1,
+    MENU    => "$lang{ADD}:index=$index&add_form=1:add; $lang{SEARCH}:index=$index&search_form=1:search",
+  });
+
+  foreach my $line (@$customer_list) {
+    $table->addrow(
+      $line->{id},
+      $line->{name},
+      $line->{address_street},
+      $html->button($lang{CHANGE}, "index=$index&chg=$line->{id}",{ class => 'change' }),
+      $html->button($lang{PASSWD}, "index=$index&passwd=$line->{id}",{ class => 'password' }),
+      $html->button($lang{DEL}, "index=$index&del=$line->{id}",
+        { MESSAGE => "$lang{DEL} $line->{name}? $line->{address_street}?", class => 'del' }),
+    );
+
+  }
+  print $table->show();
+
+  $table = $html->table(
+    {
+      width => '100%',
+      rows  => [ [ "$lang{TOTAL}:", $A_module->{TOTAL}] ]
+    }
+  );
+  print $table->show();
+
+  return 1;
+}
+
+1;
+
