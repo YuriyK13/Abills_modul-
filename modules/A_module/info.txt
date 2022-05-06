@@ -1,0 +1,43 @@
+
+-------------------------
+webinterface
+-------------------------
+
+vyklyk spyska
+# my $customer_list = $A_module->customer_list({ ID => '_SHOW', NAME => '_SHOW', ADDRESS => '_SHOW', COLS_NAME => 1, COLS_UPPER => 1});
+
+# print Dumper \%FORM;
+
+-------------------------
+mysql/A_module.pm
+-------------------------
+
+sub customer_list {
+  my $self = shift;
+  my ($attr) = @_;
+
+  # my $SORT      = ($attr->{SORT})      ? $attr->{SORT}      : 1;
+  # my $DESC      = ($attr->{DESC})      ? $attr->{DESC}      : '';
+  # my $PG        = ($attr->{PG})        ? $attr->{PG}        : 0;
+  # my $PAGE_ROWS = ($attr->{PAGE_ROWS}) ? $attr->{PAGE_ROWS} : 25;
+  #
+  # my @WHERE_RULES = ();
+  #
+  # my $WHERE =  $self->search_former($attr, [
+  #   [ 'ID',               'INT', 'customers.id',              1 ],
+  #   [ 'NAME',             'STR', 'customers.name',            1 ],
+  #   [ 'ADDRESS',          'STR', 'customers.address_street',  1 ],
+  # ],
+  #   { WHERE       => 1,
+  #     WHERE_RULES => \@WHERE_RULES,
+  #   });
+
+  $self->query("
+    SELECT *
+    FROM customers
+    ;", undef, $attr
+  );
+
+  my $list = $self->{list};
+  return $list;
+}
